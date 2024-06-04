@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llama3</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #eaeaea;
+        }
+
+        .chat-container {
+            width: 90%;
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background-color: #212020;
+            padding: 10px;
+            color: #eaeaea;
+            text-align: center;
+            border-bottom: 1px solid #444;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            overflow-y: scroll;
+            max-height: 700px;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #4a4a4a;
+            color: #eaeaea;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #3a3a3a;
+            color: #eaeaea;
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #444;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            background-color: #2c2c2c;
+            color: #eaeaea;
+            border: none;
+            border-radius: 0;
+        }
+        #user-input:focus {
+            outline: none;
+        }
+
+        #send-btn {
+            padding: 10px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #send-btn:hover {
+            background-color: #357ab8;
+        }
+
+        pre {
+            background-color: #2c2c2c;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            color: #eaeaea;
+        }
+
+        code {
+            background-color: #3a3a3a;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #eaeaea;
+        }
+
+        ::placeholder {
+            color: #bbb;
+        }
+
+        .non-resizable {
+            resize: none;
+            max-height: 200px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Llama3</h2>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                <p>Welcome to Llama3! How can I help you today?</p>
+            </div>
+        </div>
+        <div class="chat-input">
+            <textarea id="user-input" class="non-resizable" rows="4" placeholder="Type your message here..."></textarea>
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('send-btn').addEventListener('click', function() {
+            sendMessage();
+        });
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('user-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+
+                let selectionStart = this.selectionStart;
+                let selectionEnd = this.selectionEnd;
+
+                this.value = this.value.substring(0, selectionStart)
+                                + '\n'
+                                + this.value.substring(selectionEnd);
+
+                this.selectionStart = selectionStart + 1;
+                this.selectionEnd = selectionEnd + 1;
+            } else if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const messageText = userInput.value.trim();
+            userInput.value = "";
+            
+            if (messageText === '') {
+                return;
+            }
+            
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user-message';
+            userMessage.textContent = messageText;
+            
+            document.getElementById('chat-messages').appendChild(userMessage);
+
+            fetch('http://127.0.0.1:5000/ollama', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: messageText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const botMessage = document.createElement('div');
+                botMessage.className = 'message bot-message';
+                botMessage.innerHTML = marked.parse(data["message"]["content"]);
+        
+                document.getElementById('chat-messages').appendChild(botMessage);
+                botMessage.scrollIntoView();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
