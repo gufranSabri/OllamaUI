@@ -34,5 +34,5 @@ def open_browser():
     webbrowser.open('http://127.0.0.1:4000')
 
 if __name__ == '__main__':
-    # threading.Timer(1.5, open_browser).start()
+    threading.Timer(1.5, open_browser).start()
     socketio.run(app, host="0.0.0.0", port=4000, debug=True)
