@@ -1,11 +1,13 @@
 import ollama
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, render_template
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import webbrowser
 import threading
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 history = []
 
@@ -13,21 +15,24 @@ history = []
 def home():
     return render_template('home.html')
 
-@app.route('/ollama', methods=['POST'])
-def ollama_predict():
-    input_data = request.get_json()
+@socketio.on('user_message')
+def handle_user_message(data):
+    input_message = data['message']
+    history.append({'role': 'user', 'content': input_message})
 
-    history.append({'role': 'user', 'content': input_data['message']})
+    def stream_response():
+        stream = ollama.chat(model='llama3', messages=history, stream=True)
+        for chunk in stream:
+            response_chunk = chunk['message']['content']
+            emit('bot_message', {'message': response_chunk})
 
-    response = ollama.chat(model='llama3', messages=history)
-    print(response['message']['content'])
-
-    history.append({'role': 'assistant', 'content': response['message']['content']})
-    return jsonify(response)
+        emit('bot_message', {'message': '<END><END><END>'})
+    
+    stream_response()
 
 def open_browser():
-    webbrowser.open('http://127.0.0.1:5000')
+    webbrowser.open('http://127.0.0.1:4000')
 
 if __name__ == '__main__':
-    threading.Timer(1.5, open_browser).start()
-    app.run()
+    # threading.Timer(1.5, open_browser).start()
+    socketio.run(app, host="0.0.0.0", port=4000, debug=True)

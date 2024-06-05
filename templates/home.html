@@ -6,40 +6,43 @@
     <title>Llama3</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            /* font-family: Arial, sans-serif; */
             background-color: #1e1e1e;
             margin: 0;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
             height: 100vh;
             color: #eaeaea;
         }
 
+        body *{
+            font-family: "Work Sans", sans-serif;
+        }
+
         .chat-container {
             width: 90%;
-            background-color: #2c2c2c;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            margin-bottom: 15px;
         }
 
         .chat-header {
             background-color: #212020;
-            padding: 10px;
             color: #eaeaea;
             text-align: center;
-            border-bottom: 1px solid #444;
+            width: 100%;
+            text-align: start;
+            padding-left: 50px;
         }
 
         .chat-messages {
             flex: 1;
             padding: 10px;
-            border-bottom: 1px solid #444;
             overflow-y: scroll;
-            max-height: 700px;
         }
 
         .message {
@@ -63,31 +66,43 @@
 
         .chat-input {
             display: flex;
-            border-top: 1px solid #444;
+            border-radius: 10px;
+            height: 50px;
+            background-color: #4c4c4c;
+            padding: 5px;
         }
 
         #user-input {
             flex: 1;
             padding: 10px;
-            background-color: #2c2c2c;
+            background-color: #4c4c4c;
             color: #eaeaea;
             border: none;
-            border-radius: 0;
+            border-radius: 10px 0 0 10px;
         }
         #user-input:focus {
             outline: none;
         }
 
         #send-btn {
-            padding: 10px;
-            background-color: #4a90e2;
+            background-color: #707070;
             color: white;
             border: none;
             cursor: pointer;
+            border-radius: 0 10px 10px 0;
+            font-size: 20px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            margin: auto;
+            border-radius: 100px;
+            /* padding: 20px; */
         }
 
         #send-btn:hover {
-            background-color: #357ab8;
+            background-color: #2c2c2c;
         }
 
         pre {
@@ -113,88 +128,128 @@
             resize: none;
             max-height: 200px;
         }
+
+        a{
+            color: #84bbf9;
+        }
+
+        textarea{
+            border-radius: 10px;
+        }
+        code{
+            background-color: transparent;
+        }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
 <body>
+    <div class="chat-header">
+        <h2>Llama3</h2>
+    </div>
     <div class="chat-container">
-        <div class="chat-header">
-            <h2>Llama3</h2>
-        </div>
         <div class="chat-messages" id="chat-messages">
             <div class="message bot-message">
                 <p>Welcome to Llama3! How can I help you today?</p>
             </div>
         </div>
-        <div class="chat-input">
-            <textarea id="user-input" class="non-resizable" rows="4" placeholder="Type your message here..."></textarea>
-            <button id="send-btn">Send</button>
+        <br>
+        <div class="chat-input" id="chat-input">
+            <textarea id="user-input" class="non-resizable" rows="10" placeholder="Type your message here..."></textarea>
+            <button id="send-btn"><img height="30px" width="27px" src = "../static/images/send.png"/></button>
         </div>
     </div>
     <script>
-        document.getElementById('send-btn').addEventListener('click', function() {
-            sendMessage();
-        });
+        var buffer = ''
+        var END_TOKEN = "<END><END><END>"
 
-        document.getElementById('user-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        document.getElementById('user-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.shiftKey) {
-                e.preventDefault();
-
-                let selectionStart = this.selectionStart;
-                let selectionEnd = this.selectionEnd;
-
-                this.value = this.value.substring(0, selectionStart)
-                                + '\n'
-                                + this.value.substring(selectionEnd);
-
-                this.selectionStart = selectionStart + 1;
-                this.selectionEnd = selectionEnd + 1;
-            } else if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        function sendMessage() {
-            const userInput = document.getElementById('user-input');
-            const messageText = userInput.value.trim();
-            userInput.value = "";
-            
-            if (messageText === '') {
-                return;
-            }
-            
-            const userMessage = document.createElement('div');
-            userMessage.className = 'message user-message';
-            userMessage.textContent = messageText;
-            
-            document.getElementById('chat-messages').appendChild(userMessage);
-
-            fetch('http://127.0.0.1:5000/ollama', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: messageText })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const botMessage = document.createElement('div');
-                botMessage.className = 'message bot-message';
-                botMessage.innerHTML = marked.parse(data["message"]["content"]);
-        
-                document.getElementById('chat-messages').appendChild(botMessage);
-                botMessage.scrollIntoView();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        function getLines() {
+            var textarea = document.getElementById('user-input');
+            var text = textarea.value;
+            return text.split('\n').length;
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io('http://127.0.0.1:4000');
+
+            // interval that checks the number of lines in the textarea and adjusts the height of chat-input to the extent of 150px
+            setInterval(() => {
+                var lines = getLines()+1;
+                var chatInput = document.getElementById('chat-input');
+                var height = 0;
+                if (lines > 1) {
+                    height = 20 * lines;
+                }
+                if (height > 200)height = 200;
+                if(height<50) height = 50
+                chatInput.style.height = height + 'px';
+            }, 100);
+            
+            document.getElementById('send-btn').addEventListener('click', sendMessage);
+            document.getElementById('user-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            document.getElementById('user-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+                    let textarea = e.target;
+                    let selectionStart = textarea.selectionStart;
+                    let selectionEnd = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, selectionStart) + '\n' + textarea.value.substring(selectionEnd);
+                    textarea.selectionStart = selectionStart + 1;
+                    textarea.selectionEnd = selectionEnd + 1;
+                } else if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            socket.on('bot_message', (data) => {
+                var messagesDiv = document.getElementById('chat-messages').children
+                var botMessage = null
+                if(messagesDiv.length %2 == 0){
+                    botMessage = document.createElement('div');
+                    botMessage.className = 'message bot-message';
+                    document.getElementById('chat-messages').appendChild(botMessage);
+                    botMessage.scrollIntoView();
+                    document.getElementById('send-btn').disabled = true;
+                }
+                else botMessage = messagesDiv[messagesDiv.length-1]
+                
+                botMessage.innerHTML = marked.parse(buffer);
+                if(data.message == END_TOKEN){
+                    buffer = ''
+                    botMessage.scrollIntoView();
+                    document.getElementById('send-btn').disabled = false;
+                    return
+                }
+                buffer += data.message         
+                
+            });
+
+            function sendMessage() {
+                const userInput = document.getElementById('user-input');
+                const messageText = userInput.value.trim();
+                userInput.value = "";
+
+                if (messageText === '') return;
+
+                const userMessage = document.createElement('div');
+                userMessage.className = 'message user-message';
+                userMessage.innerHTML = "<pre>"+messageText+"</pre>";
+                document.getElementById('chat-messages').appendChild(userMessage);
+
+                socket.emit('user_message', { message: messageText });
+            }
+        });
     </script>
 </body>
 </html>
