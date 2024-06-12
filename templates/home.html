@@ -6,15 +6,20 @@
     <title>Llama3</title>
     <style>
         body {
-            /* font-family: Arial, sans-serif; */
-            background-color: #1e1e1e;
             margin: 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .main{
+            background-color: #1e1e1e;
             display: flex;
             justify-content: space-between;
             flex-direction: column;
             align-items: center;
             height: 100vh;
             color: #eaeaea;
+            width: 100%;
         }
 
         body *{
@@ -23,7 +28,6 @@
 
         .chat-container {
             width: 90%;
-            border-radius: 10px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -34,9 +38,11 @@
             background-color: #212020;
             color: #eaeaea;
             text-align: center;
-            width: 100%;
+            width: 95%;
             text-align: start;
             padding-left: 50px;
+            display: flex;
+            
         }
 
         .chat-messages {
@@ -55,13 +61,17 @@
         .user-message {
             background-color: #4a4a4a;
             color: #eaeaea;
+            width: 90%;
             align-self: flex-end;
+            margin-left: auto;
+            margin-right: 1px;
         }
 
-        .bot-message {
+        .assistant-message {
             background-color: #3a3a3a;
             color: #eaeaea;
             align-self: flex-start;
+            width: 90%;
         }
 
         .chat-input {
@@ -140,6 +150,58 @@
             background-color: transparent;
         }
 
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        /* Style for the scrollbar thumb */
+        ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 5px;
+        }
+
+        /* Style for the scrollbar track */
+        ::-webkit-scrollbar-track {
+            background: #2c2c2c;
+            border-radius: 5px;
+        }
+
+        /* Style for the scrollbar corner in a dual-scrollbar scenario */
+        ::-webkit-scrollbar-corner {
+            background: #2c2c2c;
+        }
+
+        #sideBarBtn{
+            cursor: pointer;
+
+        }
+        #sideBarBtn:hover{
+            color: #84bbf9;
+        }
+
+        #sideBar{
+            width: 15%;
+            padding: 13px;
+            background-color: #111111;
+            color: white;
+            overflow-y: scroll;
+        }
+
+        .sideBarItem{
+            background-color: transparent;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x:hidden;
+            width: 90%;
+            margin-top: 5px;
+            padding-left: 5px;
+            cursor: pointer;
+        }
+        .sideBarItem:hover{
+            background-color: #4a4a4a;
+        }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
@@ -150,24 +212,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
 <body>
-    <div class="chat-header">
-        <h2>Llama3</h2>
-    </div>
-    <div class="chat-container">
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot-message">
-                <p>Welcome to Llama3! How can I help you today?</p>
+    <!-- <div id="sideBar">
+        <h3>Chat History</h3>
+        <div class="sideBarItem"><span>ssdssdsdsdsdsddssds</span></div>
+        <div class="sideBarItem"><span>ssds</span></div>
+    </div> -->
+    <div class="main">
+        <div class="chat-header">
+            <h2 id="sideBarBtn">>&nbsp;&nbsp;&nbsp;</h2>
+            <h2>Llama3</h2>
+        </div>
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message assistant-message">
+                    <p>Welcome to Llama3! How can I help you today?</p>
+                </div>
             </div>
-        </div>
-        <br>
-        <div class="chat-input" id="chat-input">
-            <textarea id="user-input" class="non-resizable" rows="10" placeholder="Type your message here..."></textarea>
-            <button id="send-btn"><img height="30px" width="27px" src = "../static/images/send.png"/></button>
-        </div>
+            <br>
+            <div class="chat-input" id="chat-input">
+                <textarea id="user-input" class="non-resizable" rows="10" placeholder="Type your message here..."></textarea>
+                <button id="send-btn"><img height="30px" width="27px" src = "../static/images/send.png"/></button>
+            </div>
     </div>
+
+    </div>
+
     <script>
         var buffer = ''
         var END_TOKEN = "<END><END><END>"
+        var selected_chat = -1
 
         function getLines() {
             var textarea = document.getElementById('user-input');
@@ -178,7 +251,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io('http://127.0.0.1:4000');
 
-            // interval that checks the number of lines in the textarea and adjusts the height of chat-input to the extent of 150px
+            // getChatNames()
+
             setInterval(() => {
                 var lines = getLines()+1;
                 var chatInput = document.getElementById('chat-input');
@@ -212,12 +286,34 @@
                 }
             });
 
-            socket.on('bot_message', (data) => {
+            document.getElementById('sideBarBtn').addEventListener('click', () => {
+                var sideBar = document.getElementById('sideBar')
+                if(sideBar.style.display == "none"){
+                    sideBar.style.display = "block"
+                }
+                else{
+                    sideBar.style.display = "none"
+                }
+            })
+
+            socket.on('chat_message', (data) => {
+                var role = data.role;
+                var message = data.content;
+
+                var messageDiv = document.createElement('div');
+                messageDiv.className = 'message ' + role + '-message';
+                messageDiv.innerHTML = "<pre>"+message+"</pre>";
+                document.getElementById('chat-messages').appendChild(messageDiv);
+                messageDiv.scrollIntoView();
+            });
+
+
+            socket.on('assistant_message', (data) => {
                 var messagesDiv = document.getElementById('chat-messages').children
                 var botMessage = null
                 if(messagesDiv.length %2 == 0){
                     botMessage = document.createElement('div');
-                    botMessage.className = 'message bot-message';
+                    botMessage.className = 'message assistant-message';
                     document.getElementById('chat-messages').appendChild(botMessage);
                     botMessage.scrollIntoView();
                     document.getElementById('send-btn').disabled = true;
@@ -234,6 +330,53 @@
                 buffer += data.message         
                 
             });
+
+            socket.on('chat_names', (data) => {
+                var sideBar = document.getElementById('sideBar')
+                sideBar.innerHTML = "<h3>Chat History</h3>"
+                
+                var chatNames = data.message.split("|")
+                chatNames.unshift("New Chat")
+                
+                chatNames.forEach(chatName => {
+                    var sideBarItem = document.createElement('div')
+                    sideBarItem.className = "sideBarItem"
+                    sideBarItem.innerHTML = "<span>"+chatName+"</span>"
+                    sideBarItem.addEventListener('click', () => {
+                        socket.emit('get_chat', {chatName: chatName})
+                    })
+                    sideBar.appendChild(sideBarItem)
+                });
+
+                selected_chat = 0
+
+                var sideBarItems = document.getElementsByClassName('sideBarItem')
+                sideBarItems[selected_chat].style.backgroundColor = "#4a4a4a"
+
+                // add event listener for side bar item click. change selected item and emit get_chat event
+                for (let i = 0; i < sideBarItems.length; i++) {
+                    sideBarItems[i].addEventListener('click', () => {
+                        sideBarItems[selected_chat].style.backgroundColor = "transparent"
+                        selected_chat = i
+                        sideBarItems[selected_chat].style.backgroundColor = "#4a4a4a"
+                        // socket.emit('get_chat', {chatName: sideBarItems[selected_chat].innerText})
+                    })
+
+                    sideBarItems[i].addEventListener('mouseover', () => {
+                        sideBarItems[i].style.backgroundColor = "#4a4a4a"
+                    })
+                    sideBarItems[i].addEventListener('mouseout', () => {
+                        if(i != selected_chat){
+                            sideBarItems[i].style.backgroundColor = "transparent"
+                        }
+                    })
+                }
+
+            });
+
+            function getChatNames(){
+                socket.emit('get_chat_names')
+            }
 
             function sendMessage() {
                 const userInput = document.getElementById('user-input');
